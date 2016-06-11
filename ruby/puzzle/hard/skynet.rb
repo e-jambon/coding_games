@@ -1,9 +1,12 @@
 
 STDOUT.sync = true # DO NOT REMOVE
 require 'benchmark'
-DEBUG = 'SEVERE_LINK'
-
-
+INITIALIZER = true
+LINKED_GATEWAY = false
+HAS_CRITICAL_PATH = false
+SEVERE_LINK = true
+LOWER_THREAT_LEVEL = false
+ACTION = true
 ######################
 #
 #  INITIALIZATION
@@ -104,7 +107,7 @@ end
 
 # USING INIIALIZERS TO GET CLEAN DATA
 #------------------------------------
-if DEBUG == 'INITIALIZER'
+if INITIALIZER
   STDERR.puts "BENCHMARK INITIALIZER :"
   STDERR.puts Benchmark.measure {
     initialize_defcon_lists
@@ -120,7 +123,7 @@ else
 end
 
 
-if DEBUG == 'INITIALIZER'
+if INITIALIZER
   STDERR.puts "gateways list : #{@gateway_nodes}"
   STDERR.puts "Defcon1 list  : #{@defcon1_nodes}"
   STDERR.puts "Defcon2 list  : #{@defcon2_nodes}"
@@ -158,7 +161,7 @@ def linked_gateway (defcon_node)
 
   subset = @links.select {|link| link[0] == defcon_node || link[1] == defcon_node }
 
-  if DEBUG == 'LINKED_GATEWAY'
+  if LINKED_GATEWAY
     STDERR.puts "linked_gateway : @links = #{@links}"
     STDERR.puts "linked_gateway : defcon_node = #{defcon_node}"
     STDERR.puts "linked_gateway : subset = #{subset}"
@@ -182,7 +185,7 @@ def has_critical_path (defcon_node)
   queue = @defcon_map[defcon_node]
 
   result = filters_non_defcon2(queue)
-  if DEBUG == 'HAS_CRITICAL_PATH'
+  if HAS_CRITICAL_PATH
     STDERR.puts "has_critical_path : defcon_node = #{defcon_node}"
     STDERR.puts "has_critical_path : queue =  #{queue}"
     STDERR.puts "has_critical_path : result =  #{result}"
@@ -222,7 +225,7 @@ end
 # updates context data accordingly.
 def lower_threat_level(defcon_node)
   # IF node1 or node2 is in defcon1, remove it from defcon1.
-  if DEBUG == 'LOWER_THREAT_LEVEL'
+  if LOWER_THREAT_LEVEL
     STDERR.puts "lower_threat_level : IN "
     STDERR.puts "lower_threat_level : defcon_node = #{defcon_node}"
     STDERR.puts "lower_threat_level : @defcon2_nodes = #{@defcon2_nodes}"
@@ -237,7 +240,7 @@ def lower_threat_level(defcon_node)
     @defcon2_nodes.delete(defcon_node)
     @defcon1_nodes << defcon_node
   end
-  if DEBUG == 'LOWER_THREAT_LEVEL'
+  if LOWER_THREAT_LEVEL
     STDERR.puts "lower_threat_level : RESULTS "
     STDERR.puts "lower_threat_level : defcon_node = #{defcon_node}"
     STDERR.puts "lower_threat_level : @defcon2_nodes = #{@defcon2_nodes}"
@@ -258,12 +261,24 @@ end
 
 
 def severe_link(defcon_node)
+
   gateway_node = linked_gateway (defcon_node)
+
+  if SEVERE_LINK
+    STDERR.puts "severe_link : defcon_node = #{defcon_node}"
+    STDERR.puts "severe_link : gateway_node = #{gateway_node}"
+  end
+
   on_severed_link(defcon_node, gateway_node)
   link = (@links.include?([gateway_node,defcon_node]) ? [gateway_node,defcon_node] : [defcon_node,gateway_node])
   @links.delete(link)
+
+  if SEVERE_LINK
+    STDERR.puts "severe_link : link = #{link}' "
+    STDERR.puts "severe_link : puts \"#{link[0]} #{link[1]}\""
+  end
+
   puts "#{link[0]} #{link[1]}"
-  # Then severe the link
 end
 
 
@@ -274,35 +289,35 @@ end
 ######################
 
 def action(skybot_node)
-  trace_debug = true
+
   # Fist things. If skynet is on a defcon1 node, we have no choice.
   if @defcon1_nodes.include?(skybot_node)
     severe_link(skybot_node)
     return
   end
 
-  if trace_debug
+  if ACTION
     STDERR.puts "action : defcon1 : #{@defcon1_nodes}"
     STDERR.puts "action : skybot is not in defcon1"
   end
 
   # Second thing : One level away matters :
   children_lvl_one = @full_map[skybot_node]
-  if trace_debug
+  if ACTION
     STDERR.puts "action : lvl 1 children #{children_lvl_one}"
   end
 
   l1_defcon2_nodes = filters_non_defcon2(children_lvl_one)
   l1_defcon1_nodes = filters_non_defcon1(children_lvl_one)
-  if trace_debug
+  if ACTION
     STDERR.puts "action : lvl 1 defcon2 nodes  #{l1_defcon2_nodes} "
     STDERR.puts "action : lvl 1 defcon1 nodes #{l1_defcon1_nodes} "
   end
 
   # Is there a defcon2 node ahead ?
   if l1_defcon2_nodes.length > 0
-    if trace_debug
-      STDERR.puts "action : found defcon2 lvl1  #{l1_defcon2_nodes} "
+    if ACTION
+      STDERR.puts "action : found defcon2 lvl1 :::: #{l1_defcon2_nodes} "
     end
     severe_link(l1_defcon2_nodes[0])
     return
@@ -311,7 +326,7 @@ def action(skybot_node)
 
   # Is there a critical path ahead ?
   if l1_defcon1_nodes.length > 1
-    if trace_debug
+    if ACTION
       STDERR.puts "action : Looking for critical path from 1 lvl away"
     end
     l1_defcon1_nodes.each do |node|
@@ -332,7 +347,7 @@ def action(skybot_node)
 
   #children_lvl_two
   # Is there a critical path ahead ?
-  if trace_debug
+  if ACTION
     STDERR.puts "action : removing a defcon link"
   end
 
@@ -340,10 +355,8 @@ def action(skybot_node)
     severe_link(@defcon2_nodes[0])
   else !(@defcon1_nodes.empty?)
   severe_link(@defcon1_nodes[0])
+  return
   end
-
-  # Hmmmm
-  puts "WON ?"
 
 end
 
@@ -351,11 +364,7 @@ end
 
 loop do
   si = gets.to_i
-
-  if DEBUG
-    STDERR.puts "Skybot position : #{si}"
-  end
-
+  STDERR.puts "Skybot position : #{si}"
   action(si)
 end
 
